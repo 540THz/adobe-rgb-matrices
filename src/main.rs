@@ -16,6 +16,21 @@ fn vscaleadd(v: &Vec<BigRational>, sc: &BigRational, w: &Vec<BigRational>) -> Ve
     v.iter().zip(w.iter()).map(|(x, y)| x * sc + y).collect()
 }
 
+fn transpose(a: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
+    (0..a[0].len()).map(|j|
+        (0..a.len()).map(|i| a[i][j].clone()).collect()
+    ).collect()
+}
+
+fn multiply(a: &Vec<Vec<BigRational>>, b: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
+    let bt = transpose(&b);
+    a.iter().map(|v|
+        bt.iter().map(|w|
+            v.iter().zip(w.iter()).map(|(x, y)| x * y).sum()
+        ).collect()
+    ).collect()
+}
+
 fn identity(n: usize) -> Vec<Vec<BigRational>> {
     (0..n).map(|i|
         (0..n).map(|j|
@@ -100,6 +115,9 @@ fn main() {
     let a_inv = inverse(&a);
     println!("\x1b[1;92m[A]\x1b[0m     = {}", fmatrix(&a));
     println!("\x1b[1;92m[A inv]\x1b[0m = {}", fmatrix(&a_inv));
+    let i_3 = multiply(&a, &a_inv);
+    println!("\x1b[1;96m[A]·[A inv]\x1b[0m = {}", fmatrix(&i_3));
+    assert_eq!(i_3, identity(3));
 
     // Another example of creating a matrix and its inverse
     // Source: https://en.wikipedia.org/wiki/Hilbert_matrix
@@ -112,5 +130,8 @@ fn main() {
     let h_inv = inverse(&h);
     println!("\x1b[1;92m[H]\x1b[0m     = {}", fmatrix(&h));
     println!("\x1b[1;92m[H inv]\x1b[0m = {}", fmatrix(&h_inv));
+    let i_n = multiply(&h, &h_inv);
+    println!("\x1b[1;96m[H]·[H inv]\x1b[0m = {}", fmatrix(&i_n));
+    assert_eq!(i_n, identity(n));
 
 }
