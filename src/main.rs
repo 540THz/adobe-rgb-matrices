@@ -16,6 +16,10 @@ fn vscaleadd(v: &Vec<BigRational>, sc: &BigRational, w: &Vec<BigRational>) -> Ve
     v.iter().zip(w.iter()).map(|(x, y)| x * sc + y).collect()
 }
 
+fn sumcolumns(a: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
+    a.iter().map(|v| vec![v.iter().sum()]).collect()
+}
+
 fn transpose(a: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
     (0..a[0].len()).map(|j|
         (0..a.len()).map(|i| a[i][j].clone()).collect()
@@ -175,6 +179,12 @@ fn print_result1(no: i32, name: &str, desc: &str, def: &str, desc2: &str, value:
     println!("\n  {}{}", value, extra);
 }
 
+fn print_result2(sym: &str, name: &str, desc: &str, def: &str, value: &String, extra: &str) {
+    print!("{} \x1b[1;96m{}\x1b[0m ({})", sym, name, desc); // cyan
+    if !def.is_empty() {print!(" = \x1b[93m{}\x1b[0m", def);} // yellow
+    println!("\n  {}{}", value, extra);
+}
+
 fn adobe_rgb_matrices() {
     // [P]: RGB -> XYZ matrix
     //  - calculated from xy chromaticity coordinates of primary colors (red, green, blue) and white
@@ -200,6 +210,36 @@ fn adobe_rgb_matrices() {
     // [C inv]: LMS -> XYZ matrix
     let xyz_from_lms = inverse(&lms_from_xyz);
 
+    // ■ XYZ of 'white (D65)'
+    //  - equals sum of the columns of [P]
+    //  - 3127/3290 3290/3290 3583/3290
+    let xyz_white = sumcolumns(&xyz_from_rgb);
+    // ● XYZ of 'PCS white (D50)'
+    //  - icc profile header - offset 0x44, length 0xC / See ICC.1:2021-04 6.1 (p.12)
+    //  - 63190/65536 65536/65536 54061/65536 (0xF6D6 0x10000 0xD32D) from AdobeRGB1998.icc
+    let xyz_pcs_white = vec![
+        vec![BigRational::from_str("63190/65536").unwrap()],
+        vec![BigRational::from_str("65536/65536").unwrap()],
+        vec![BigRational::from_str("54061/65536").unwrap()],
+    ];
+
+    // □ LMS of 'white (D65)'     = [C][■]
+    // ○ LMS of 'PCS white (D50)' = [C][●]
+    let lms_white     = multiply(&lms_from_xyz, &xyz_white);
+    let lms_pcs_white = multiply(&lms_from_xyz, &xyz_pcs_white);
+
+    // [Λ]:     LMS -> PCSLMS matrix = diag(○/□)
+    // [Λ inv]: PCSLMS -> LMS matrix = diag(□/○)
+    let (pcslms_from_lms, lms_from_pcslms) = {
+        (0..3).map(|i|
+            (0..3).map(|j|
+                if i == j {let x = &lms_white[i][0] / &lms_pcs_white[i][0]; (x.recip(), x)}
+                else      {let x = BigRational::zero();                     (x.clone(), x)}
+            ).collect()
+        ).collect()
+    };
+    assert_eq!(&lms_from_pcslms, &inverse(&pcslms_from_lms));
+
     println!("## The decimals in [C], [●], [○], and [Q1] are exact.");
     println!("## Other decimals are the ROUNDDOWN'ed APPROXIMATIONS to 20 decimal places.");
     println!();
@@ -223,6 +263,28 @@ fn adobe_rgb_matrices() {
     let w = format!("{}\n≈ {}", fmatrix(&xyz_from_lms),                  fmatrix_rounddown(&xyz_from_lms, 20));
     print_result1(3,  "C",     "XYZ -> LMS", "", "", &v, "");
     print_result1(4,  "C inv", "LMS -> XYZ", "", "", &w, "\n");
+
+    println!("\x1b[90m:: [■] is the sum of the columns of [P].\x1b[0m");
+    println!();
+    println!("\x1b[90m:: [●] is from the ICC profile header, offset 0x44, length 0xC.\x1b[0m");
+    println!("\x1b[90m:: See \"ICC.1:2001-04\" 6.1 (p.12) and A.1 (p.64).\x1b[0m");
+    println!("\x1b[90m:: The values of [●] can be expressed as EXACT DECIMALS with 16 decmial places.\x1b[0m");
+    println!();
+    println!("\x1b[90m:: The values of [○] can be expressed as EXACT DECIMALS with 20 decmial places.\x1b[0m");
+    println!();
+    let v = format!("{}\n≈ {}", fmatrix_samedenom(&xyz_white, 3290),      fmatrix_rounddown(&xyz_white, 20));
+    let w = format!("{}\n= {}", fmatrix_samedenom(&xyz_pcs_white, 65536), fmatrix_rounddown(&xyz_white, 16));
+    print_result2("■", "XYZ of white",     "D65", "", &v, "");
+    print_result2("●", "XYZ of PCS white", "D50", "", &w, "");
+    let v = format!("{}\n≈ {}", fmatrix(&lms_white),     fmatrix_rounddown(&lms_white, 20));
+    let w = format!("{}\n= {}", fmatrix(&lms_pcs_white), fmatrix_rounddown(&lms_pcs_white, 20));
+    print_result2("□", "LMS of white",     "D65", "[C]·[■]", &v, "");
+    print_result2("○", "LMS of PCS white", "D50", "[C]·[●]", &w, "\n");
+
+    let v = format!("{}\n≈ {}", fmatrix(&pcslms_from_lms), fmatrix_rounddown(&pcslms_from_lms, 20));
+    let w = format!("{}\n≈ {}", fmatrix(&lms_from_pcslms), fmatrix_rounddown(&lms_from_pcslms, 20));
+    print_result1(5,  "Λ",     "LMS -> PCSLMS", "diag(○/□)", "", &v, "");
+    print_result1(6,  "Λ inv", "PCSLMS -> LMS", "diag(□/○)", "", &w, "\n");
 
 }
 
