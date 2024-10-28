@@ -141,6 +141,11 @@ fn fmatrix(a: &Vec<Vec<BigRational>>) -> String {
     fmatrixf(a, |x| x.to_string())
 }
 
+fn fmatrix_samedenom(a: &Vec<Vec<BigRational>>, denom: u64) -> String {
+    let bigd = BigRational::from_u64(denom).unwrap();
+    fmatrixf(a, |x| format!("{}/{}", x * &bigd, &bigd))
+}
+
 fn fmatrix_rounddown(a: &Vec<Vec<BigRational>>, decimal_places: usize) -> String {
     fmatrixf(a, |x| {
         let mut s = String::with_capacity(128);
@@ -185,6 +190,16 @@ fn adobe_rgb_matrices() {
     // [P inv]: XYZ -> RGB matrix
     let rgb_from_xyz = inverse(&xyz_from_rgb);
 
+    // [C]: XYZ -> LMS matrix
+    //  - Linearized Bradford CAT / See ICC.1:2001-04 E.1.2 (p.88)
+    let lms_from_xyz = vec![
+        vec![BigRational::from_str("8951/10000").unwrap(),  BigRational::from_str("2664/10000").unwrap(),  BigRational::from_str("-1614/10000").unwrap()],
+        vec![BigRational::from_str("-7502/10000").unwrap(), BigRational::from_str("17135/10000").unwrap(), BigRational::from_str("367/10000").unwrap()],
+        vec![BigRational::from_str("389/10000").unwrap(),   BigRational::from_str("-685/10000").unwrap(),  BigRational::from_str("10296/10000").unwrap()],
+    ];
+    // [C inv]: LMS -> XYZ matrix
+    let xyz_from_lms = inverse(&lms_from_xyz);
+
     println!("## The decimals in [C], [●], [○], and [Q1] are exact.");
     println!("## Other decimals are the ROUNDDOWN'ed APPROXIMATIONS to 20 decimal places.");
     println!();
@@ -199,6 +214,15 @@ fn adobe_rgb_matrices() {
     let w = format!("{}\n≈ {}", fmatrix(&rgb_from_xyz), fmatrix_rounddown(&rgb_from_xyz, 20));
     print_result1(1,  "P",     "RGB -> XYZ", "", "", &v, "");
     print_result1(2,  "P inv", "XYZ -> RGB", "", "", &w, "\n");
+
+    println!("\x1b[90m:: [C] is the linearized Bradford CAT, used in LLAB and original CIECAM97s.\x1b[0m");
+    println!("\x1b[90m:: See \"ICC.1:2001-04\" E.1.2 (p.88).\x1b[0m");
+    println!("\x1b[90m:: The values of [C] can be expressed as EXACT DECIMALS with 4 decmial places.\x1b[0m");
+    println!();
+    let v = format!("{}\n= {}", fmatrix_samedenom(&lms_from_xyz, 10000), fmatrix_rounddown(&lms_from_xyz, 4));
+    let w = format!("{}\n≈ {}", fmatrix(&xyz_from_lms),                  fmatrix_rounddown(&xyz_from_lms, 20));
+    print_result1(3,  "C",     "XYZ -> LMS", "", "", &v, "");
+    print_result1(4,  "C inv", "LMS -> XYZ", "", "", &w, "\n");
 
 }
 
