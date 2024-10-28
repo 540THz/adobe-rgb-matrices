@@ -246,6 +246,12 @@ fn adobe_rgb_matrices() {
     let xyz_from_pcsxyz = multiply(&multiply(&xyz_from_lms, &lms_from_pcslms), &lms_from_xyz);
     assert_eq!(&xyz_from_pcsxyz, &inverse(&pcsxyz_from_xyz));
 
+    // [Q]:     RGB -> PCSXYZ matrix ( RGB -> XYZ -> PCSXYZ ) = [A][P]         = [C inv][Λ][C][P]
+    // [Q inv]: PCSXYZ -> RGB matrix ( PCSXYZ -> XYZ -> RGB ) = [P inv][A inv] = [P inv][C inv][Λ inv][C]
+    let pcsxyz_from_rgb = multiply(&pcsxyz_from_xyz, &xyz_from_rgb);
+    let rgb_from_pcsxyz = multiply(&rgb_from_xyz, &xyz_from_pcsxyz);
+    assert_eq!(&rgb_from_pcsxyz, &inverse(&pcsxyz_from_rgb));
+
     println!("## The decimals in [C], [●], [○], and [Q1] are exact.");
     println!("## Other decimals are the ROUNDDOWN'ed APPROXIMATIONS to 20 decimal places.");
     println!();
@@ -296,6 +302,11 @@ fn adobe_rgb_matrices() {
     let w = format!("{}\n≈ {}", fmatrix(&xyz_from_pcsxyz), fmatrix_rounddown(&xyz_from_pcsxyz, 20));
     print_result1(7,  "A",     "XYZ -> PCSXYZ", "[C inv]·[Λ]·[C]",     "XYZ -> LMS -> PCSLMS -> PCSXYZ", &v, "");
     print_result1(8,  "A inv", "PCSXYZ -> XYZ", "[C inv]·[Λ inv]·[C]", "PCSXYZ -> PCSLMS -> LMS -> XYZ", &w, "\n");
+
+    let v = format!("{}\n≈ {}", fmatrix(&pcsxyz_from_rgb), fmatrix_rounddown(&pcsxyz_from_rgb, 20));
+    let w = format!("{}\n≈ {}", fmatrix(&rgb_from_pcsxyz), fmatrix_rounddown(&rgb_from_pcsxyz, 20));
+    print_result1(9,  "Q",     "RGB -> PCSXYZ", "[A]·[P]",         "RGB -> XYZ -> PCSXYZ", &v, "");
+    print_result1(10, "Q inv", "PCSXYZ -> RGB", "[P inv]·[A inv]", "PCSXYZ -> XYZ -> RGB", &w, "\n");
 
 }
 
