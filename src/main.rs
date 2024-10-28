@@ -86,6 +86,51 @@ fn inverse(a: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
     id
 }
 
+fn get_primary_matrix(xy_red: &str, xy_green: &str, xy_blue: &str, xy_white: &str) -> Vec<Vec<BigRational>> {
+    // See https://cmykspot.blogspot.com/2024/10/xyz-of-adobe-rgb-primaries.html (Korean)
+    // or  https://mina86.com/2019/srgb-xyz-matrix/ (English)
+
+    let one = BigRational::one();
+    // split() returns an iterator
+    let (mut it_r, mut it_g, mut it_b, mut it_w) = (xy_red.split(','), xy_green.split(','), xy_blue.split(','), xy_white.split(','));
+    let (x_red  , y_red  ) = (BigRational::from_str(it_r.next().unwrap()).unwrap(), BigRational::from_str(it_r.next().unwrap()).unwrap());
+    let (x_green, y_green) = (BigRational::from_str(it_g.next().unwrap()).unwrap(), BigRational::from_str(it_g.next().unwrap()).unwrap());
+    let (x_blue , y_blue ) = (BigRational::from_str(it_b.next().unwrap()).unwrap(), BigRational::from_str(it_b.next().unwrap()).unwrap());
+    let (x_white, y_white) = (BigRational::from_str(it_w.next().unwrap()).unwrap(), BigRational::from_str(it_w.next().unwrap()).unwrap());
+    let z_red   = &one - &x_red   - &y_red;
+    let z_green = &one - &x_green - &y_green;
+    let z_blue  = &one - &x_blue  - &y_blue;
+    let z_white = &one - &x_white - &y_white;
+
+    let m = vec![
+        vec![&x_red / &y_red, &x_green / &y_green, &x_blue / &y_blue],
+        vec![one.clone(), one.clone(), one.clone()],
+        vec![&z_red / &y_red, &z_green / &y_green, &z_blue / &y_blue],
+    ];
+    let b = vec![
+        vec![&x_white / &y_white],
+        vec![one.clone()],
+        vec![&z_white / &y_white],
+    ];
+
+    // Y_red·[(1st col of M)] + Y_green·[(2st col of M)] + Y_blue·[(3rd col of M)] = [b]
+    //
+    // So we have the matrix equation  [M]·[y] = [b]     (1)
+    // where [y] be a 3x1 matrix, y_11 = Y_red, y_21 = Y_green, and y_31 = Y_blue.
+    //
+    // The solution to (1) is   [y] = [M inv]·[b]   if [M] is invertible.
+
+    let y = multiply(&inverse(&m), &b);
+    // y[0][0] == Y_red / y[1][0] == Y_green / y[2][0] == Y_blue
+
+    // returns [Y_red·(1st col of M)  Y_green·(2st col of M)  Y_blue·(3rd col of M)]
+    vec![
+        vec![&m[0][0] * &y[0][0], &m[0][1] * &y[1][0], &m[0][2] * &y[2][0]],
+        vec![&m[1][0] * &y[0][0], &m[1][1] * &y[1][0], &m[1][2] * &y[2][0]],
+        vec![&m[2][0] * &y[0][0], &m[2][1] * &y[1][0], &m[2][2] * &y[2][0]],
+    ]
+}
+
 fn fmatrixf(a: &Vec<Vec<BigRational>>, f: impl FnMut(&BigRational) -> String + Clone) -> String {
     format!("[{}]", a.iter().map(|v|
         format!("[{}]", v.iter().map(f.clone()).collect::<Vec<_>>().join(", "))
@@ -96,6 +141,67 @@ fn fmatrix(a: &Vec<Vec<BigRational>>) -> String {
     fmatrixf(a, |x| x.to_string())
 }
 
+fn fmatrix_rounddown(a: &Vec<Vec<BigRational>>, decimal_places: usize) -> String {
+    fmatrixf(a, |x| {
+        let mut s = String::with_capacity(128);
+        let mut t = x.clone();
+
+        if t < BigRational::zero() {s.push_str("-"); t = -t;}
+
+        s.push_str(&t.to_integer().to_string());
+        s.push_str(".");
+        for _ in 0..decimal_places {
+            t = t.fract() * BigRational::from_i32(10).unwrap();
+            s.push_str(&t.to_integer().to_string());
+        }
+        s
+    })
+}
+
+fn print_result1(no: i32, name: &str, desc: &str, def: &str, desc2: &str, value: &String, extra: &str) {
+    print!("({}) \x1b[1;92m[{}]\x1b[0m: \x1b[1;96m{}\x1b[0m matrix", no, name, desc); // green, cyan
+    if !def.is_empty() {print!(" = \x1b[93m{}\x1b[0m", def);} // yellow
+    if !desc2.is_empty() {
+        let n = no.to_string().len() + name.chars().count()
+                     + desc.chars().count() + def.chars().count()
+                     + if def.is_empty() {14} else {17};
+        print!("{: <2$} ( {} )", "", desc2, if n < 56 {56 - n} else {0});
+    }
+    println!("\n  {}{}", value, extra);
+}
+
+fn adobe_rgb_matrices() {
+    // [P]: RGB -> XYZ matrix
+    //  - calculated from xy chromaticity coordinates of primary colors (red, green, blue) and white
+    //  - See Adobe RGB (1998) Color Image Encoding (May 2005) 4.3.1.1 (p.88)
+    let xyz_from_rgb = get_primary_matrix(
+        "64/100,33/100", "21/100,71/100", "15/100,6/100", "3127/10000,3290/10000"
+    );
+    assert_eq!(&xyz_from_rgb, &vec![
+        vec![BigRational::from_str("573536/994567").unwrap(),  BigRational::from_str("263643/1420810").unwrap(),  BigRational::from_str("187206/994567").unwrap()],
+        vec![BigRational::from_str("591459/1989134").unwrap(), BigRational::from_str("6239551/9945670").unwrap(), BigRational::from_str("374412/4972835").unwrap()],
+        vec![BigRational::from_str("53769/1989134").unwrap(),  BigRational::from_str("351524/4972835").unwrap(),  BigRational::from_str("4929758/4972835").unwrap()],
+    ]);
+    // [P inv]: XYZ -> RGB matrix
+    let rgb_from_xyz = inverse(&xyz_from_rgb);
+
+    println!("## The decimals in [C], [●], [○], and [Q1] are exact.");
+    println!("## Other decimals are the ROUNDDOWN'ed APPROXIMATIONS to 20 decimal places.");
+    println!();
+
+    println!("\x1b[90m:: [P] is calculated from the xy chromaticity coordinates of primary colors and white.\x1b[0m");
+    println!("\x1b[90m::             red   green   blue   white (D65)\x1b[0m");
+    println!("\x1b[90m::         x   0.64   0.21   0.15   0.3127\x1b[0m");
+    println!("\x1b[90m::         y   0.33   0.71   0.06   0.3290\x1b[0m");
+    println!("\x1b[90m:: See \"Adobe RGB (1998) Color Image Encoding (May 2005)\" 4.3.1.1 (p.10).\x1b[0m");
+    println!();
+    let v = format!("{}\n≈ {}", fmatrix(&xyz_from_rgb), fmatrix_rounddown(&xyz_from_rgb, 20));
+    let w = format!("{}\n≈ {}", fmatrix(&rgb_from_xyz), fmatrix_rounddown(&rgb_from_xyz, 20));
+    print_result1(1,  "P",     "RGB -> XYZ", "", "", &v, "");
+    print_result1(2,  "P inv", "XYZ -> RGB", "", "", &w, "\n");
+
+}
+
 fn main() {
     if !std::io::stdout().is_terminal() {
         ColorChoice::Never.write_global();
@@ -104,34 +210,6 @@ fn main() {
     if let Some(version) = option_env!("GIT_HASH_VERSION") {
         print!("Version {}\n", version);
     }
-
-    // One example of creating a matrix and its inverse
-    // Source: http://web.archive.org/web/20200815053323/https://nhigham.com/2019/01/23/who-invented-the-matrix-condition-number/
-    let a = vec![
-        vec![BigRational::from_i32(-149).unwrap(), BigRational::from_i32(-50).unwrap(), BigRational::from_i32(-154).unwrap()],
-        vec![BigRational::from_i32(537).unwrap(),  BigRational::from_i32(180).unwrap(), BigRational::from_i32(546).unwrap() ],
-        vec![BigRational::from_i32(-27).unwrap(),  BigRational::from_i32(-9).unwrap(),  BigRational::from_i32(-25).unwrap() ],
-    ];
-    let a_inv = inverse(&a);
-    println!("\x1b[1;92m[A]\x1b[0m     = {}", fmatrix(&a));
-    println!("\x1b[1;92m[A inv]\x1b[0m = {}", fmatrix(&a_inv));
-    let i_3 = multiply(&a, &a_inv);
-    println!("\x1b[1;96m[A]·[A inv]\x1b[0m = {}", fmatrix(&i_3));
-    assert_eq!(i_3, identity(3));
-
-    // Another example of creating a matrix and its inverse
-    // Source: https://en.wikipedia.org/wiki/Hilbert_matrix
-    let n: usize = 5;
-    let h = (0..n).map(|i|
-        (0..n).map(|j|
-            BigRational::from_str(&*format!("1/{}", i + j + 1)).unwrap()
-        ).collect()
-    ).collect();
-    let h_inv = inverse(&h);
-    println!("\x1b[1;92m[H]\x1b[0m     = {}", fmatrix(&h));
-    println!("\x1b[1;92m[H inv]\x1b[0m = {}", fmatrix(&h_inv));
-    let i_n = multiply(&h, &h_inv);
-    println!("\x1b[1;96m[H]·[H inv]\x1b[0m = {}", fmatrix(&i_n));
-    assert_eq!(i_n, identity(n));
-
+    println!();
+    adobe_rgb_matrices();
 }
