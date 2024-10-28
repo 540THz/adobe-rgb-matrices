@@ -16,6 +16,22 @@ fn vscaleadd(v: &Vec<BigRational>, sc: &BigRational, w: &Vec<BigRational>) -> Ve
     v.iter().zip(w.iter()).map(|(x, y)| x * sc + y).collect()
 }
 
+fn scale(a: &Vec<Vec<BigRational>>, sc: &BigRational) -> Vec<Vec<BigRational>> {
+    a.iter().map(|v| vscale(v, sc)).collect()
+}
+
+fn scaleround(a: &Vec<Vec<BigRational>>, sc: &BigRational) -> Vec<Vec<BigRational>> {
+    a.iter().map(|v|
+        v.iter().map(|x| (x * sc).round()).collect()
+    ).collect()
+}
+
+fn round(a: &Vec<Vec<BigRational>>, denom: u64) -> Vec<Vec<BigRational>> {
+    let sc = BigRational::from_u64(denom).unwrap();
+    let scr = sc.recip();
+    scale(&scaleround(&a, &sc), &scr)
+}
+
 fn sumcolumns(a: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
     a.iter().map(|v| vec![v.iter().sum()]).collect()
 }
@@ -252,6 +268,11 @@ fn adobe_rgb_matrices() {
     let rgb_from_pcsxyz = multiply(&rgb_from_xyz, &xyz_from_pcsxyz);
     assert_eq!(&rgb_from_pcsxyz, &inverse(&pcsxyz_from_rgb));
 
+    // [Q1]:     RGB -> PCSXYZ1 matrix ( rounded values of [Q] to the nearest multiples of 1/65536, ties away from zero )
+    // [Q1 inv]: PCSXYZ1 -> RGB matrix ( inverse of [Q1] )
+    let pcsxyz1_from_rgb = round(&pcsxyz_from_rgb, 65536);
+    let rgb_from_pcsxyz1 = inverse(&pcsxyz1_from_rgb);
+
     println!("## The decimals in [C], [●], [○], and [Q1] are exact.");
     println!("## Other decimals are the ROUNDDOWN'ed APPROXIMATIONS to 20 decimal places.");
     println!();
@@ -307,6 +328,19 @@ fn adobe_rgb_matrices() {
     let w = format!("{}\n≈ {}", fmatrix(&rgb_from_pcsxyz), fmatrix_rounddown(&rgb_from_pcsxyz, 20));
     print_result1(9,  "Q",     "RGB -> PCSXYZ", "[A]·[P]",         "RGB -> XYZ -> PCSXYZ", &v, "");
     print_result1(10, "Q inv", "PCSXYZ -> RGB", "[P inv]·[A inv]", "PCSXYZ -> XYZ -> RGB", &w, "\n");
+
+    println!("\x1b[90m:: [Q1] is the matrix obtained by rounding the values of [Q] to the nearest multiples of 1/65536, ties away from zero.\x1b[0m");
+    println!("\x1b[90m:: It is EXACTLY THE SAME as [rXYZ gXYZ bXYZ] in AdobeRGB1998.icc.\x1b[0m");
+    println!("\x1b[90m:: The sum of the columns of [Q1] equals [●], i.e., XYZ of PCS white (D50).\x1b[0m");
+    println!("\x1b[90m:: The values of [Q1] can be expressed as EXACT DECIMALS with 16 decimal places.\x1b[0m");
+    println!();
+    println!("\x1b[90m:: [Q1 inv] is the inverse of [Q1], literally.\x1b[0m");
+    println!("\x1b[90m:: It is NOT obtained by rounding the values of [Q inv].\x1b[0m");
+    println!();
+    let v = format!("{}\n= {}", fmatrix_samedenom(&pcsxyz1_from_rgb, 65536), fmatrix_rounddown(&pcsxyz1_from_rgb, 16));
+    let w = format!("{}\n≈ {}", fmatrix(&rgb_from_pcsxyz1),                  fmatrix_rounddown(&rgb_from_pcsxyz1, 20));
+    print_result1(11, "Q1",     "RGB -> PCSXYZ1", "", "", &v, "");
+    print_result1(12, "Q1 inv", "PCSXYZ1 -> RGB", "", "", &w, "\n");
 
 }
 
