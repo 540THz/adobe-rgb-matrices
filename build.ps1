@@ -20,23 +20,25 @@
 #    https://visualstudio.microsoft.com/visual-cpp-build-tools/
 #    https://visualstudio.microsoft.com/downloads/
 #
-# 5. For *-windows-gnu / *-windows-gnullvm target, install MSYS2
-#    https://www.msys2.org/docs/installer/
-#    and REPLACE D:\msys64 in $msys64_dir of line 68 with the ACTUAL INSTALL LOCATION of MSYS2.
+# 5. For *-windows-gnu / *-windows-gnullvm target,
+#    5-1) Install MSYS2.
+#    https://www.msys2.org/docs/installer/ 
+#    https://github.com/msys2/msys2-installer/releases
+#    
+#    5-2) IMPORTANT: Replace "D:\msys64" in $msys64_dir on line 70 of this file
+#                    with the ACTUAL INSTALLED LOCATION of MSYS2.
 #
-#    Run the following commands on MSYS2 shell.
-#    $ pacman -Syu
+#    5-3) Run the following commands on MSYS2 shell.
+#    $ pacman -Syu   # When it's done, hit 'y <enter>' and reopen MSYS2 shell to continue.
 #    $ pacman -Su
 #
-#    5-1) For *-windows-gnu target, run
+#    5-4) For *-windows-gnu target, run these commands on MSYS2 shell.
 #    $ pacman -S --needed base-devel mingw-w64-i686-toolchain
 #    $ pacman -S --needed base-devel mingw-w64-x86_64-toolchain
-#    on MSYS2 shell.
 #
-#    5-2) For *-windows-gnullvm target, run
+#    5-5) For *-windows-gnullvm target, run these commands on MSYS2 shell.
 #    $ pacman -S --needed base-devel mingw-w64-clang-i686-toolchain
 #    $ pacman -S --needed base-devel mingw-w64-clang-x86_64-toolchain
-#    on MSYS2 shell.
 #
 #    See https://doc.rust-lang.org/rustc/platform-support/pc-windows-gnullvm.html 
 #        https://www.msys2.org/docs/environments/
