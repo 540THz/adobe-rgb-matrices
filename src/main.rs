@@ -133,7 +133,7 @@ fn get_primary_matrix(xy_red: &str, xy_green: &str, xy_blue: &str, xy_white: &st
         vec![&z_white / &y_white],
     ];
 
-    // Y_red·[(1st col of M)] + Y_green·[(2st col of M)] + Y_blue·[(3rd col of M)] = [b]
+    // Y_red·[(1st col of M)] + Y_green·[(2nd col of M)] + Y_blue·[(3rd col of M)] = [b]
     //
     // So we have the matrix equation  [M]·[y] = [b]     (1)
     // where [y] be a 3x1 matrix, y_11 = Y_red, y_21 = Y_green, and y_31 = Y_blue.
@@ -143,7 +143,7 @@ fn get_primary_matrix(xy_red: &str, xy_green: &str, xy_blue: &str, xy_white: &st
     let y = multiply(&inverse(&m), &b);
     // y[0][0] == Y_red / y[1][0] == Y_green / y[2][0] == Y_blue
 
-    // returns [Y_red·(1st col of M)  Y_green·(2st col of M)  Y_blue·(3rd col of M)]
+    // returns [Y_red·(1st col of M)  Y_green·(2nd col of M)  Y_blue·(3rd col of M)]
     vec![
         vec![&m[0][0] * &y[0][0], &m[0][1] * &y[1][0], &m[0][2] * &y[2][0]],
         vec![&m[1][0] * &y[0][0], &m[1][1] * &y[1][0], &m[1][2] * &y[2][0]],
