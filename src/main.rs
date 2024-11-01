@@ -2,7 +2,7 @@
 
 use std::io::IsTerminal;
 use std::str::FromStr;
-use num::FromPrimitive;
+use num::{FromPrimitive, ToPrimitive};
 use num::{Zero, One};
 
 use anstream::{print, println, ColorChoice};
@@ -168,16 +168,15 @@ fn fmatrix_samedenom(a: &Vec<Vec<BigRational>>, denom: u64) -> String {
 
 fn fmatrix_rounddown(a: &Vec<Vec<BigRational>>, decimal_places: usize) -> String {
     fmatrixf(a, |x| {
-        let mut s = String::with_capacity(128);
-        let mut t = x.clone();
-
-        if t < BigRational::zero() {s.push_str("-"); t = -t;}
-
+        let zero = BigRational::zero();
+        let ten  = BigRational::from_i32(10).unwrap();
+        let mut s = String::with_capacity(32);
+        let mut t = if x < &zero {s.push('-'); -x} else {x.clone()};
         s.push_str(&t.to_integer().to_string());
-        s.push_str(".");
+        s.push('.');
         for _ in 0..decimal_places {
-            t = t.fract() * BigRational::from_i32(10).unwrap();
-            s.push_str(&t.to_integer().to_string());
+            t = t.fract() * &ten;
+            s.push((b'0' + t.to_u8().unwrap()) as char);
         }
         s
     })
