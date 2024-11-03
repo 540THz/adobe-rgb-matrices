@@ -1,0 +1,9 @@
+# See https://rust-lang.github.io/rustup/overrides.html#the-toolchain-file
+# and https://rust-lang.github.io/rustup/concepts/profiles.html
+# Any rustup command (e.g., `rustup show`) will install the components from 'nightly-2024-10-31' channel.
+# Since the `profile` is specified as `minimal`, `rustc`, `rust-std`, and `cargo` will be installed as well as `rust-src`.
+
+[toolchain]
+channel = "nightly-2024-10-31"
+profile = "minimal"
+components = [ "rust-src" ]
