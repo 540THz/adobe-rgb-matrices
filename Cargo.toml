@@ -4,6 +4,8 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+anstream = "0.6.17"
+num = "0.4"
 
 [profile.release]
 debug = false
