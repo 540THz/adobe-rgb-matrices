@@ -72,6 +72,24 @@ fn inverse(a: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
     id
 }
 
+fn transpose(a: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
+    (0..a[0].len()).map(|j|
+        (0..a.len()).map(|i| a[i][j].clone()).collect()
+    ).collect()
+}
+
+fn multiplyabt(a: &Vec<Vec<BigRational>>, b: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
+    a.iter().map(|v|
+        b.iter().map(|w|
+            v.iter().zip(w.iter()).map(|(x, y)| x * y).sum()
+        ).collect()
+    ).collect()
+}
+
+fn multiply(a: &Vec<Vec<BigRational>>, b: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
+    multiplyabt(a, &transpose(b))
+}
+
 #[inline(never)]
 fn to_string_f(a: &Vec<Vec<BigRational>>, f: impl FnMut(&BigRational) -> String + Clone) -> String {
     format!("[{}]", a.iter().map(|v|
@@ -106,6 +124,9 @@ fn main() {
     let a_inv = inverse(&a);
     println!("\x1b[1;92m[A]\x1b[0m     = {}", to_string(&a));
     println!("\x1b[1;92m[A inv]\x1b[0m = {}", to_string(&a_inv));
+    let i_3 = multiply(&a, &a_inv);
+    println!("\x1b[1;96m[A]·[A inv]\x1b[0m = {}", to_string(&i_3));
+    assert_eq!(i_3, identity(3));
 
     // Another example of creating a matrix and its inverse
     // Source: https://en.wikipedia.org/wiki/Hilbert_matrix
@@ -118,5 +139,8 @@ fn main() {
     let h_inv = inverse(&h);
     println!("\x1b[1;92m[H]\x1b[0m     = {}", to_string(&h));
     println!("\x1b[1;92m[H inv]\x1b[0m = {}", to_string(&h_inv));
+    let i_n = multiply(&h, &h_inv);
+    println!("\x1b[1;96m[H]·[H inv]\x1b[0m = {}", to_string(&i_n));
+    assert_eq!(i_n, identity(n));
 
 }
