@@ -261,6 +261,12 @@ fn do_main() {
     let xyz_from_pcsxyz = multiply(&multiply(&xyz_from_lms, &lms_from_pcslms), &lms_from_xyz);
     assert_eq!(&xyz_from_pcsxyz, &inverse(&pcsxyz_from_xyz));
 
+    // [Q]:     RGB -> PCSXYZ matrix ( RGB -> XYZ -> PCSXYZ ) = [A][P]         = [C inv][Λ][C][P]
+    // [Q inv]: PCSXYZ -> RGB matrix ( PCSXYZ -> XYZ -> RGB ) = [P inv][A inv] = [P inv][C inv][Λ inv][C]
+    let pcsxyz_from_rgb = multiply(&pcsxyz_from_xyz, &xyz_from_rgb);
+    let rgb_from_pcsxyz = multiply(&rgb_from_xyz, &xyz_from_pcsxyz);
+    assert_eq!(&rgb_from_pcsxyz, &inverse(&pcsxyz_from_rgb));
+
     println!(concat!(
         "## [C], [●], [○], and [Q1]: decimals are exact.\n",
         "## All other matrices: decimals are the TRUNC'ated (aka ROUNDDOWN'ed) APPROXIMATIONS to 20 decimal places.\n",
@@ -304,6 +310,9 @@ fn do_main() {
 
     print_result1(7,  "A",     "XYZ -> PCSXYZ", "[C inv]·[Λ]·[C]",     "XYZ -> LMS -> PCSLMS -> PCSXYZ", &pcsxyz_from_xyz, None, None, "");
     print_result1(8,  "A inv", "PCSXYZ -> XYZ", "[C inv]·[Λ inv]·[C]", "PCSXYZ -> PCSLMS -> LMS -> XYZ", &xyz_from_pcsxyz, None, None, "\n");
+
+    print_result1(9,  "Q",     "RGB -> PCSXYZ", "[A]·[P]",         "RGB -> XYZ -> PCSXYZ", &pcsxyz_from_rgb, None, None, "");
+    print_result1(10, "Q inv", "PCSXYZ -> RGB", "[P inv]·[A inv]", "PCSXYZ -> XYZ -> RGB", &rgb_from_pcsxyz, None, None, "\n");
 
 }
 
