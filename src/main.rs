@@ -244,6 +244,17 @@ fn do_main() {
     let lms_white     = multiply(&lms_from_xyz, &xyz_white);
     let lms_pcs_white = multiply(&lms_from_xyz, &xyz_pcs_white);
 
+    // [Λ]:     LMS -> PCSLMS matrix = diag(○/□)
+    // [Λ inv]: PCSLMS -> LMS matrix = diag(□/○)
+    let (pcslms_from_lms, lms_from_pcslms) = {
+        let (v, w) = (0..3).map(|i| {
+            let x = &lms_white[i][0] / &lms_pcs_white[i][0];
+            (x.recip(), x)
+        }).collect::<(Vec<_>, Vec<_>)>();
+        (diag(&v), diag(&w))
+    };
+    assert_eq!(&lms_from_pcslms, &inverse(&pcslms_from_lms));
+
     println!(concat!(
         "## [C], [●], [○], and [Q1]: decimals are exact.\n",
         "## All other matrices: decimals are the TRUNC'ated (aka ROUNDDOWN'ed) APPROXIMATIONS to 20 decimal places.\n",
@@ -281,6 +292,9 @@ fn do_main() {
     print_result2("●", "XYZ of PCS white", "D50", "", &xyz_pcs_white, Some(65536), Some(16), "");
     print_result2("□", "LMS of white",     "D65", "[C]·[■]", &lms_white,     Some(3290 * 10000),  None,     "");
     print_result2("○", "LMS of PCS white", "D50", "[C]·[●]", &lms_pcs_white, Some(65536 * 10000), Some(20), "\n");
+
+    print_result1(5,  "Λ",     "LMS -> PCSLMS", "diag(○/□)", "", &pcslms_from_lms, None, None, "");
+    print_result1(6,  "Λ inv", "PCSLMS -> LMS", "diag(□/○)", "", &lms_from_pcslms, None, None, "\n");
 
 }
 
