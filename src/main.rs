@@ -103,6 +103,14 @@ fn sumcolumns(a: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
 }
 
 #[inline(never)]
+fn round(a: &Vec<Vec<BigRational>>, denom: u64) -> Vec<Vec<BigRational>> {
+    let sc = BigRational::from_u64(denom).unwrap();
+    a.iter().map(|v|
+        v.iter().map(|x| (x * &sc).round() / &sc).collect()
+    ).collect()
+}
+
+#[inline(never)]
 fn compute_primary_matrix(xy_red: &str, xy_green: &str, xy_blue: &str, xy_white: &str) -> Vec<Vec<BigRational>> {
     // See https://cmykspot.blogspot.com/2024/10/xyz-of-adobe-rgb-primaries.html (Korean)
     // or  https://mina86.com/2019/srgb-xyz-matrix/ (English)
@@ -267,6 +275,12 @@ fn do_main() {
     let rgb_from_pcsxyz = multiply(&rgb_from_xyz, &xyz_from_pcsxyz);
     assert_eq!(&rgb_from_pcsxyz, &inverse(&pcsxyz_from_rgb));
 
+    // [Q1]:     RGB -> PCSXYZ1 matrix ( rounded values of [Q] to the nearest multiples of 1/65536, ties away from zero )
+    // [Q1 inv]: PCSXYZ1 -> RGB matrix ( inverse of [Q1] )
+    let pcsxyz1_from_rgb = round(&pcsxyz_from_rgb, 65536);
+    assert_eq!(&sumcolumns(&pcsxyz1_from_rgb), &xyz_pcs_white);
+    let rgb_from_pcsxyz1 = inverse(&pcsxyz1_from_rgb);
+
     println!(concat!(
         "## [C], [●], [○], and [Q1]: decimals are exact.\n",
         "## All other matrices: decimals are the TRUNC'ated (aka ROUNDDOWN'ed) APPROXIMATIONS to 20 decimal places.\n",
@@ -313,6 +327,19 @@ fn do_main() {
 
     print_result1(9,  "Q",     "RGB -> PCSXYZ", "[A]·[P]",         "RGB -> XYZ -> PCSXYZ", &pcsxyz_from_rgb, None, None, "");
     print_result1(10, "Q inv", "PCSXYZ -> RGB", "[P inv]·[A inv]", "PCSXYZ -> XYZ -> RGB", &rgb_from_pcsxyz, None, None, "\n");
+
+    println!(concat!("\x1b[90m",
+        ":: [Q1] is the matrix obtained by rounding the numbers in [Q] to the nearest multiples of 1/65536, ties away from zero.\n",
+        ":: It is EXACTLY THE SAME as [rXYZ gXYZ bXYZ] in AdobeRGB1998.icc.\n",
+        ":: The sum of all columns of [Q1] EXACTLY EQUALS [●], i.e., XYZ of PCS white (D50).\n",
+        "\n",
+        ":: [Q1 inv] is LITERALLY the inverse of [Q1].\n",
+        ":: That is, [Q1]·[Q1 inv] exactly equals [I].\n",
+        "\n",
+        ":: (EXACT DECIMALS) Every number in [Q1] has at most 16 decimal places.\n",
+    "\x1b[0m"));
+    print_result1(11, "Q1",     "RGB -> PCSXYZ1", "", "", &pcsxyz1_from_rgb, Some(65536), Some(16), "");
+    print_result1(12, "Q1 inv", "PCSXYZ1 -> RGB", "", "", &rgb_from_pcsxyz1, None,        None,     "\n");
 
 }
 
