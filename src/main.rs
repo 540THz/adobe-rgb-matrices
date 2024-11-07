@@ -255,6 +255,12 @@ fn do_main() {
     };
     assert_eq!(&lms_from_pcslms, &inverse(&pcslms_from_lms));
 
+    // [A]:     XYZ -> PCSXYZ matrix ( XYZ -> LMS -> PCSLMS -> PCSXYZ ) = [C inv][Λ][C]
+    // [A inv]: PCSXYZ -> XYZ matrix ( PCSXYZ -> PCSLMS -> LMS -> XYZ ) = [C inv][Λ inv][C]
+    let pcsxyz_from_xyz = multiply(&multiply(&xyz_from_lms, &pcslms_from_lms), &lms_from_xyz);
+    let xyz_from_pcsxyz = multiply(&multiply(&xyz_from_lms, &lms_from_pcslms), &lms_from_xyz);
+    assert_eq!(&xyz_from_pcsxyz, &inverse(&pcsxyz_from_xyz));
+
     println!(concat!(
         "## [C], [●], [○], and [Q1]: decimals are exact.\n",
         "## All other matrices: decimals are the TRUNC'ated (aka ROUNDDOWN'ed) APPROXIMATIONS to 20 decimal places.\n",
@@ -295,6 +301,9 @@ fn do_main() {
 
     print_result1(5,  "Λ",     "LMS -> PCSLMS", "diag(○/□)", "", &pcslms_from_lms, None, None, "");
     print_result1(6,  "Λ inv", "PCSLMS -> LMS", "diag(□/○)", "", &lms_from_pcslms, None, None, "\n");
+
+    print_result1(7,  "A",     "XYZ -> PCSXYZ", "[C inv]·[Λ]·[C]",     "XYZ -> LMS -> PCSLMS -> PCSXYZ", &pcsxyz_from_xyz, None, None, "");
+    print_result1(8,  "A inv", "PCSXYZ -> XYZ", "[C inv]·[Λ inv]·[C]", "PCSXYZ -> PCSLMS -> LMS -> XYZ", &xyz_from_pcsxyz, None, None, "\n");
 
 }
 
