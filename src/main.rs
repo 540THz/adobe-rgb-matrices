@@ -98,6 +98,10 @@ fn diag(v: &Vec<BigRational>) -> Vec<Vec<BigRational>> {
     ).collect()
 }
 
+fn sumcolumns(a: &Vec<Vec<BigRational>>) -> Vec<Vec<BigRational>> {
+    a.iter().map(|v| vec![v.iter().sum()]).collect()
+}
+
 #[inline(never)]
 fn compute_primary_matrix(xy_red: &str, xy_green: &str, xy_blue: &str, xy_white: &str) -> Vec<Vec<BigRational>> {
     // See https://cmykspot.blogspot.com/2024/10/xyz-of-adobe-rgb-primaries.html (Korean)
@@ -199,6 +203,13 @@ fn print_result1(no: i32, name: &str, desc: &str, def: &str, desc2: &str, a: &Ve
     print_values(a, denom, dp, extra);
 }
 
+fn print_result2(sym: &str, name: &str, desc: &str, def: &str, a: &Vec<Vec<BigRational>>, denom: Option<u64>, dp: Option<i32>, extra: &str) {
+    print!("{} \x1b[1;96m{}\x1b[0m ({})", sym, name, desc); // cyan
+    if !def.is_empty() {print!(" = \x1b[93m{}\x1b[0m", def);} // yellow
+    println!();
+    print_values(a, denom, dp, extra);
+}
+
 #[inline(never)]
 fn do_main() {
     // [P]: RGB -> XYZ matrix (1st col = XYZ_red, 2nd col = XYZ_green, 3rd col = XYZ_blue)
@@ -221,6 +232,17 @@ fn do_main() {
     ]);
     // [C inv]: LMS -> XYZ matrix
     let xyz_from_lms = inverse(&lms_from_xyz);
+
+    // ■ XYZ of 'white (D65)':     3127/3290   3290/3290   3583/3290
+    // ● XYZ of 'PCS white (D50)': 63190/65536 65536/65536 54061/65536
+    let xyz_white = sumcolumns(&xyz_from_rgb);
+    assert_eq!(&xyz_white, &get_matrix(&[["3127/3290"], ["3290/3290"], ["3583/3290"]]));
+    let xyz_pcs_white = get_matrix(&[["63190/65536"], ["65536/65536"], ["54061/65536"]]);
+
+    // □ LMS of 'white (D65)'     = [C][■]
+    // ○ LMS of 'PCS white (D50)' = [C][●]
+    let lms_white     = multiply(&lms_from_xyz, &xyz_white);
+    let lms_pcs_white = multiply(&lms_from_xyz, &xyz_pcs_white);
 
     println!(concat!(
         "## [C], [●], [○], and [Q1]: decimals are exact.\n",
@@ -245,6 +267,20 @@ fn do_main() {
     "\x1b[0m"));
     print_result1(3,  "C",     "XYZ -> LMS", "", "", &lms_from_xyz, Some(10000), Some(4), "");
     print_result1(4,  "C inv", "LMS -> XYZ", "", "", &xyz_from_lms, None,        None,    "\n");
+
+    println!(concat!("\x1b[90m",
+        ":: [■] is obtained by summing all columns of [P].\n",
+        "\n",
+        ":: [●] is from the ICC profile header, offset 0x44, length 0xC.\n",
+        ":: See \"ICC.1:2001-04\" 6.1 (p.12) and A.1 (p.64).\n",
+        "\n",
+        ":: (EXACT DECIMALS) Every number in [●] has at most 16 decimal places.\n",
+        ":: (EXACT DECIMALS) Every number in [○] has at most 20 decimal places.\n",
+        "\x1b[0m"));
+    print_result2("■", "XYZ of white",     "D65", "", &xyz_white,     Some(3290),  None,     "");
+    print_result2("●", "XYZ of PCS white", "D50", "", &xyz_pcs_white, Some(65536), Some(16), "");
+    print_result2("□", "LMS of white",     "D65", "[C]·[■]", &lms_white,     Some(3290 * 10000),  None,     "");
+    print_result2("○", "LMS of PCS white", "D50", "[C]·[●]", &lms_pcs_white, Some(65536 * 10000), Some(20), "\n");
 
 }
 
