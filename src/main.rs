@@ -213,6 +213,15 @@ fn do_main() {
     // [P inv]: XYZ -> RGB matrix
     let rgb_from_xyz = inverse(&xyz_from_rgb);
 
+    // [C]: XYZ -> LMS matrix (Linearized Bradford CAT matrix)
+    let lms_from_xyz = get_matrix(&[
+        [ "8951/10000",  "2664/10000", "-1614/10000"],
+        ["-7502/10000", "17135/10000",   "367/10000"],
+        [  "389/10000",  "-685/10000", "10296/10000"],
+    ]);
+    // [C inv]: LMS -> XYZ matrix
+    let xyz_from_lms = inverse(&lms_from_xyz);
+
     println!(concat!(
         "## [C], [●], [○], and [Q1]: decimals are exact.\n",
         "## All other matrices: decimals are the TRUNC'ated (aka ROUNDDOWN'ed) APPROXIMATIONS to 20 decimal places.\n",
@@ -227,6 +236,15 @@ fn do_main() {
     "\x1b[0m"));
     print_result1(1,  "P",     "RGB -> XYZ", "", "", &xyz_from_rgb, None, None, "");
     print_result1(2,  "P inv", "XYZ -> RGB", "", "", &rgb_from_xyz, None, None, "\n");
+
+    println!(concat!("\x1b[90m",
+        ":: [C] is the linearized Bradford CAT, used in LLAB and original CIECAM97s.\n",
+        ":: See \"ICC.1:2001-04\" E.1.2 (p.88).\n",
+        "\n",
+        ":: (EXACT DECIMALS) Every number in [C] has at most 4 decimal places.\n",
+    "\x1b[0m"));
+    print_result1(3,  "C",     "XYZ -> LMS", "", "", &lms_from_xyz, Some(10000), Some(4), "");
+    print_result1(4,  "C inv", "LMS -> XYZ", "", "", &xyz_from_lms, None,        None,    "\n");
 
 }
 
